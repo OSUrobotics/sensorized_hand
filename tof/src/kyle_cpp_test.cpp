@@ -17,6 +17,7 @@ extern "C"
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
+#include "hand_msgs/msg/tofzone.hpp"
 
 using namespace std::chrono_literals;
 
@@ -76,6 +77,8 @@ int main(int argc, char * argv[])
 	/*   Power on sensor and init    */
 	/*********************************/
 
+
+
 	/* (Optional) Check if there is a VL53L7CX sensor connected */
 	status = vl53l7cx_is_alive(&Dev, &isAlive);
 	if(!isAlive || status)
@@ -83,6 +86,14 @@ int main(int argc, char * argv[])
 		printf("VL53L7CX not detected at requested address\n");
 		return status;
 	}
+	status = vl53l7cx_set_power_mode(&Dev, VL53L7CX_POWER_MODE_WAKEUP);
+	if(status)
+	{
+		printf("VL53L7CX wakeup failed\n");
+		return status;
+	}
+
+	// status = vl53l7cx_get_integration_time_ms(&Dev)
 
 	/* (Mandatory) Init VL53L7CX sensor */
 	status = vl53l7cx_init(&Dev);
@@ -128,10 +139,13 @@ int main(int argc, char * argv[])
 			printf("Print data no : %3u\n", &Dev.streamcount);
 			for(i = 0; i < 16; i++)
 			{
-				printf("Zone : %3d, Status : %3u, Distance : %4d mm\n",
+				printf("Zone: %3d, Status: %3u, Distance: %4d mm, Ambient per: %4d , NBtargetdetect: %4d, Signal: %8d\n",
 					i,
 					Results.target_status[VL53L7CX_NB_TARGET_PER_ZONE*i],
-					Results.distance_mm[VL53L7CX_NB_TARGET_PER_ZONE*i]);
+					Results.distance_mm[VL53L7CX_NB_TARGET_PER_ZONE*i],
+					Results.ambient_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i],
+					Results.nb_target_detected[VL53L7CX_NB_TARGET_PER_ZONE*i],
+					Results.signal_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i]);
 				//printf("%d", VL53L7CX_NB_TARGET_PER_ZONE);
 			}
 
@@ -146,6 +160,13 @@ int main(int argc, char * argv[])
 
 	status = vl53l7cx_stop_ranging(&Dev);
 	printf("End of ULD demo\n");
+
+	status = vl53l7cx_set_power_mode(&Dev, VL53L7CX_POWER_MODE_SLEEP);
+	if(status)
+	{
+		printf("VL53L7CX sleep failed\n");
+		return status;
+	}
 
 	// printf("Starting examples with ULD version %s\n", VL53L7CX_API_REVISION);
   rclcpp::spin(std::make_shared<MinimalPublisher>());
