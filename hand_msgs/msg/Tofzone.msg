@@ -1,3 +1,4 @@
+uint8 zone_num
 int16 distance
 uint8 status
 uint16 sigma

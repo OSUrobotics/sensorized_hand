@@ -18,6 +18,7 @@ extern "C"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "hand_msgs/msg/tofzone.hpp"
+#include "hand_msgs/msg/tof64.hpp"
 
 using namespace std::chrono_literals;
 
@@ -27,23 +28,16 @@ using namespace std::chrono_literals;
 class MinimalPublisher : public rclcpp::Node 
 {
   public:
-  
     MinimalPublisher(VL53L7CX_Configuration Dev_in)
     : Node("minimal_publisher"), count_(0), Dev{Dev_in}
     {
 	
-	static uint8_t 				loop, isReady, i;
-	static VL53L7CX_ResultsData 	Results;		/* Results data from VL53L7CX */
-      publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
-	  tof_publisher_ = this->create_publisher<hand_msgs::msg::Tofzone>("tof_msg", 10);
-      timer_ = this->create_wall_timer(
-      500ms, std::bind(&MinimalPublisher::timer_callback, this));
-    
-
-	
-	
-	printf("wtf\n");
-	tof_setup();
+		publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
+		tof_publisher_ = this->create_publisher<hand_msgs::msg::Tof64>("tof_msg", 10);
+		timer_ = this->create_wall_timer(
+		500ms, std::bind(&MinimalPublisher::timer_callback, this));
+		// Setup and start the sensor
+		tof_setup();
 	}
   private:
   	VL53L7CX_Configuration 	Dev;
@@ -92,60 +86,63 @@ class MinimalPublisher : public rclcpp::Node
 	// 	// return Dev;
 	// }
 
-	
-    void timer_callback()
-    {
+	void publish_tof()
+	{
 		int status;
 		uint8_t isReady, i, loop;
 		VL53L7CX_ResultsData 	Results;
+		auto tof_all_zones = hand_msgs::msg::Tof64();
 
-			loop = 0;
-	while(loop < 10)
-	{
-		status = vl53l7cx_check_data_ready(&Dev, &isReady);
+		loop = 0;
+		while(loop < 10)
+		{
+			status = vl53l7cx_check_data_ready(&Dev, &isReady);
 
-		if(isReady){printf("ready!!!!");
-			// This gets and returns the actual distance data
-			vl53l7cx_get_ranging_data(&Dev, &Results);
-
-			/* As the sensor is set in 4x4 mode by default, we have a total 
-			 * of 16 zones to print. For this example, only the data of first zone are 
-			 * print */
-			printf("Print data no : %3u\n", &Dev.streamcount);
-			for(i = 0; i < 16; i++)
+			if(isReady)
 			{
-				printf("Zone: %3d, Status: %3u, Distance: %4d mm, Ambient per: %4d , NBtargetdetect: %4d, Signal: %8d\n",
-					i,
-					Results.target_status[VL53L7CX_NB_TARGET_PER_ZONE*i],
-					Results.distance_mm[VL53L7CX_NB_TARGET_PER_ZONE*i],
-					Results.ambient_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i],
-					Results.nb_target_detected[VL53L7CX_NB_TARGET_PER_ZONE*i],
-					Results.signal_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i]);
-				//printf("%d", VL53L7CX_NB_TARGET_PER_ZONE);
-				auto tof_zone = hand_msgs::msg::Tofzone();
-				tof_zone.distance = Results.distance_mm[VL53L7CX_NB_TARGET_PER_ZONE*i];
-				tof_zone.status = Results.target_status[VL53L7CX_NB_TARGET_PER_ZONE*i];
-				tof_zone.sigma = Results.range_sigma_mm[VL53L7CX_NB_TARGET_PER_ZONE*i];
-				tof_zone.ambient = Results.ambient_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i];
-				tof_zone.num_target = Results.nb_target_detected[VL53L7CX_NB_TARGET_PER_ZONE*i];
-				tof_zone.num_spad = Results.nb_spads_enabled[VL53L7CX_NB_TARGET_PER_ZONE*i];
-				tof_zone.signal = Results.signal_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i];
-				tof_zone.reflectance = Results.reflectance[VL53L7CX_NB_TARGET_PER_ZONE*i];
-				tof_publisher_->publish(tof_zone);
-				printf("publish!!!!");
+				printf("ready!!!!");
+				// This gets and returns the actual distance data
+				vl53l7cx_get_ranging_data(&Dev, &Results);
+
+				/* As the sensor is set in 4x4 mode by default, we have a total 
+				* of 16 zones to print. For this example, only the data of first zone are 
+				* print */
+				printf("Print data no : %3u\n", &Dev.streamcount);
+				for(i = 0; i < 16; i++)
+				{
+					printf("Zone: %3d, Status: %3u, Distance: %4d mm, Ambient per: %4d , NBtargetdetect: %4d, Signal: %8d\n",
+						i,
+						Results.target_status[VL53L7CX_NB_TARGET_PER_ZONE*i],
+						Results.distance_mm[VL53L7CX_NB_TARGET_PER_ZONE*i],
+						Results.ambient_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i],
+						Results.nb_target_detected[VL53L7CX_NB_TARGET_PER_ZONE*i],
+						Results.signal_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i]);
+					//printf("%d", VL53L7CX_NB_TARGET_PER_ZONE);
+					auto tof_zone = hand_msgs::msg::Tofzone();
+					tof_zone.zone_num = i;
+					tof_zone.distance = Results.distance_mm[VL53L7CX_NB_TARGET_PER_ZONE*i];
+					tof_zone.status = Results.target_status[VL53L7CX_NB_TARGET_PER_ZONE*i];
+					tof_zone.sigma = Results.range_sigma_mm[VL53L7CX_NB_TARGET_PER_ZONE*i];
+					tof_zone.ambient = Results.ambient_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i];
+					tof_zone.num_target = Results.nb_target_detected[VL53L7CX_NB_TARGET_PER_ZONE*i];
+					tof_zone.num_spad = Results.nb_spads_enabled[VL53L7CX_NB_TARGET_PER_ZONE*i];
+					tof_zone.signal = Results.signal_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i];
+					tof_zone.reflectance = Results.reflectance[VL53L7CX_NB_TARGET_PER_ZONE*i];
+					tof_all_zones.tof_array[i] = tof_zone;
+				}
+
 			}
-
-		}
-			printf("\n");
-			loop++;
-			WaitMs(&Dev.platform, 5);
-		}
-
-		/* Wait a few ms to avoid too high polling (function in platform
-		 * file, not in API) */
-		// WaitMs(&Dev.platform, 5);
+				printf("\n");
+				loop++;
+				WaitMs(&Dev.platform, 5);
+			}
+			tof_publisher_->publish(tof_all_zones);
+			printf("publish!!!!");
+	}
 	
-
+    void timer_callback()
+    {	
+		publish_tof();
       auto message = std_msgs::msg::String();
       message.data = "Hello, world! " + std::to_string(count_++);
       RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
@@ -153,7 +150,7 @@ class MinimalPublisher : public rclcpp::Node
     }
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
-	rclcpp::Publisher<hand_msgs::msg::Tofzone>::SharedPtr tof_publisher_;
+	rclcpp::Publisher<hand_msgs::msg::Tof64>::SharedPtr tof_publisher_;
 	
     size_t count_;
 };

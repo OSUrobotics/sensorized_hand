@@ -1,8 +1,1 @@
-int16 distance
-uint8 status
-uint16 sigma
-uint32 ambient
-uint8 num_target
-uint32 num_spad
-uint32 signal
-uint8 reflectance
+Tofzone[16] tof_array
