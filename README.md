@@ -7,4 +7,7 @@ ros2 run tof talker
 
 colcon build --packages-select <>
 
-ros2 interface show hand_msgs/msg/TOFzone
+ros2 interface show hand_msgs/msg/Tofzone
+
+
+colcon clean workspace
