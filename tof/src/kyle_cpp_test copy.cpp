@@ -31,7 +31,7 @@ class MinimalPublisher : public rclcpp::Node
     : Node("minimal_publisher"), count_(0)
     {
       publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
-	  tof_publisher_ = this->create_publisher<hand_msgs::msg::Tofzone>("tof_msg", 10);
+	  tof_publisher_ = this->create_publisher<hand_msgs::msg::Tofzone>("tof_msg2", 10);
       timer_ = this->create_wall_timer(
       500ms, std::bind(&MinimalPublisher::timer_callback, this));
     }
