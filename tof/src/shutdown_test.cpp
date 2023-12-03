@@ -38,13 +38,18 @@ class MinimalPublisher : public rclcpp::Node
 		500ms, std::bind(&MinimalPublisher::timer_callback, this));
 		// Setup and start the sensor
 		tof_setup();
+		// tof_shutdown();
+
+		rclcpp::on_shutdown(std::bind( &MinimalPublisher::tof_shutdown, this));
+
 	}
   private:
   	VL53L7CX_Configuration 	Dev;
+	int status;
 	void tof_setup() 
 	{
 		// TODO: Update this method to be bool and return false if setup failure
-		int status;
+		
 		uint8_t isAlive;
 		// /* Initialize channel com */
 		status = vl53l7cx_comms_init(&Dev.platform);
@@ -72,6 +77,13 @@ class MinimalPublisher : public rclcpp::Node
 		status = vl53l7cx_start_ranging(&Dev);
 	}
 
+	void tof_shutdown() {
+		printf("\nShutting down sensor...\n");
+		// Shutdown the sensor and stop ranging
+		vl53l7cx_stop_ranging(&Dev);
+		vl53l7cx_comms_close(&Dev.platform);
+		printf("Sensor shutdown.\n");
+	}
 	// 	/*********************************/
 	// 	/*         Ranging loop          */
 	// 	/*********************************/

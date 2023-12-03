@@ -1,0 +1,3 @@
+[submodule "hand_msgs"]
+	path = hand_msgs
+	url = https://github.com/OSUrobotics/hand_msgs.git
