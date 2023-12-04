@@ -12,3 +12,6 @@ ros2 interface show hand_msgs/msg/Tofzone
 
 
 colcon clean workspace
+
+i2cdetect -y 1
+7 bit to 8 bit i2c representation....

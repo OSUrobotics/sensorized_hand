@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <dlfcn.h>
+
 extern "C"
 {
   #include "uld-driver/inc/vl53l7cx_api.h"
@@ -14,7 +15,7 @@ extern "C"
   
 
 }
-
+#include "functions/sensor_bringup.h"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "hand_msgs/msg/tofzone.hpp"
@@ -28,10 +29,10 @@ using namespace std::chrono_literals;
 class MinimalPublisher : public rclcpp::Node 
 {
   public:
-    MinimalPublisher(VL53L7CX_Configuration Dev_in)
-    : Node("minimal_publisher"), count_(0), Dev{Dev_in}
+    MinimalPublisher()//VL53L7CX_Configuration Dev_in)
+    : Node("minimal_publisher"), count_(0)//, Dev{Dev_in}
     {
-	
+		rclcpp::on_shutdown(std::bind( &MinimalPublisher::tof_shutdown, this));
 		publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
 		tof_publisher_ = this->create_publisher<hand_msgs::msg::Tof64>("tof_msg", 10);
 		timer_ = this->create_wall_timer(
@@ -40,63 +41,39 @@ class MinimalPublisher : public rclcpp::Node
 		tof_setup();
 		// tof_shutdown();
 
-		rclcpp::on_shutdown(std::bind( &MinimalPublisher::tof_shutdown, this));
+		
 
 	}
   private:
   	VL53L7CX_Configuration 	Dev;
+	uint16_t left_sensor = 0x52;
+	uint16_t right_sensor = 0x50;
 	int status;
 	void tof_setup() 
 	{
-		// TODO: Update this method to be bool and return false if setup failure
-		
-		uint8_t isAlive;
-		// /* Initialize channel com */
-		status = vl53l7cx_comms_init(&Dev.platform);
-		if(status) {printf("VL53L7CX comms init failed\n");} 
-		else {printf("VL53L7CX comms success\n");}
-		// Check if sensor connected
-		status = vl53l7cx_is_alive(&Dev, &isAlive);
-		if(!isAlive || status)
-		{printf("VL53L7CX not detected at requested address\n");}
-		// Wakeup sensor
-		status = vl53l7cx_set_power_mode(&Dev, VL53L7CX_POWER_MODE_WAKEUP);
-		if(status)
-		{printf("VL53L7CX wakeup failed\n");}
-		// Initialize sensor
-		status = vl53l7cx_init(&Dev);
-		if(status)
-		{printf("VL53L7CX ULD Loading failed\n");}
-		printf("VL53L7CX ULD ready ! (Version : %s)\n",
-				VL53L7CX_API_REVISION);
-		// Set the ranging mode to continuous 
-		status = vl53l7cx_set_ranging_mode(&Dev, VL53L7CX_RANGING_MODE_CONTINUOUS);
-		// Set the ranging frequency to 15 Hz (for 8x8 zone can be 1-15, for 4x4 1-60)
-		vl53l7cx_set_ranging_frequency_hz(&Dev, 15);
+		/** 
+		 * Start the TOF sensor at the provided I2C address. 
+		 */
 
-		status = vl53l7cx_start_ranging(&Dev);
+		// Start the left sensor
+		status = sensor_bringup(&Dev, left_sensor);
+		if (status) {
+			// Something went wrong, throw an error and shutdown node
+			RCLCPP_ERROR(this->get_logger(), "My log message %d", 4);
+			rclcpp::shutdown();
+		} 
 	}
 
 	void tof_shutdown() {
-		printf("\nShutting down sensor...\n");
+		/** 
+		 * Stop ranging and shutdown the sensor.
+		 */
+		RCLCPP_INFO(this->get_logger(), "Shutting down sensor...");
 		// Shutdown the sensor and stop ranging
 		vl53l7cx_stop_ranging(&Dev);
 		vl53l7cx_comms_close(&Dev.platform);
-		printf("Sensor shutdown.\n");
+		RCLCPP_INFO(this->get_logger(), "Sensor shutdown.");
 	}
-	// 	/*********************************/
-	// 	/*         Ranging loop          */
-	// 	/*********************************/
-	// 	// Paramters are in vl53l7cx_api.h
-	// 	// Set the ranging mode to continuous 
-	// 	status = vl53l7cx_set_ranging_mode(&Dev, VL53L7CX_RANGING_MODE_CONTINUOUS);
-	// 	// Set the ranging frequency to 15 Hz (for 8x8 zone can be 1-15, for 4x4 1-60)
-	// 	vl53l7cx_set_ranging_frequency_hz(&Dev, 15);
-
-	// 	status = vl53l7cx_start_ranging(&Dev);
-
-	// 	// return Dev;
-	// }
 
 	void publish_tof()
 	{
@@ -186,8 +163,8 @@ int main(int argc, char * argv[])
 	// }
 
 	// printf("Starting examples with ULD version %s\n", VL53L7CX_API_REVISION);
-VL53L7CX_Configuration 	Dev;
-  rclcpp::spin(std::make_shared<MinimalPublisher>(Dev));
+//   VL53L7CX_Configuration 	Dev_1;
+  rclcpp::spin(std::make_shared<MinimalPublisher>());
   rclcpp::shutdown();
   return 0;
 }

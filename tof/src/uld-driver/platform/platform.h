@@ -119,7 +119,7 @@ typedef struct
 // #define VL53L7CX_DISABLE_DISTANCE_MM
 // #define VL53L7CX_DISABLE_REFLECTANCE_PERCENT
 // #define VL53L7CX_DISABLE_TARGET_STATUS
-// #define VL53L7CX_DISABLE_MOTION_INDICATOR
+#define VL53L7CX_DISABLE_MOTION_INDICATOR
 
 
  /**
@@ -222,7 +222,7 @@ uint8_t WaitMs(
  * @param (int) *fd : pointer on a I2C channel descriptor.
  * @return (uint8_t) status : 0 if OK
  */
-int32_t vl53l7cx_comms_init(VL53L7CX_Platform * p_platform);
+int32_t vl53l7cx_comms_init(VL53L7CX_Platform * p_platform, uint16_t i2c_address_val);
 
 
 /**

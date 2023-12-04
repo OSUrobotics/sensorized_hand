@@ -19,15 +19,16 @@ include_directories("src/uld-driver/platform")
 # add_custom_target(tof
 #                   /usr/bin/make -f "${CMAKE_CURRENT_SOURCE_DIR}/src/Makefile")
 
-add_executable(talker src/kyle_cpp_test.cpp
-src/uld-driver/src/vl53l7cx_api.c
-src/uld-driver/src/vl53l7cx_plugin_detection_thresholds.c
-src/uld-driver/src/vl53l7cx_plugin_motion_indicator.c
-src/uld-driver/src/vl53l7cx_plugin_xtalk.c
-src/uld-driver/platform/platform.c
-)
-ament_target_dependencies(talker rclcpp std_msgs hand_msgs)
+# add_executable(talker src/kyle_cpp_test.cpp
+# src/uld-driver/src/vl53l7cx_api.c
+# src/uld-driver/src/vl53l7cx_plugin_detection_thresholds.c
+# src/uld-driver/src/vl53l7cx_plugin_motion_indicator.c
+# src/uld-driver/src/vl53l7cx_plugin_xtalk.c
+# src/uld-driver/platform/platform.c
+# )
+# ament_target_dependencies(talker rclcpp std_msgs hand_msgs)
 add_executable(shutdown_test_ah src/shutdown_test.cpp
+src/functions/sensor_bringup.cpp
 src/uld-driver/src/vl53l7cx_api.c
 src/uld-driver/src/vl53l7cx_plugin_detection_thresholds.c
 src/uld-driver/src/vl53l7cx_plugin_motion_indicator.c
@@ -37,7 +38,7 @@ src/uld-driver/platform/platform.c
 
 ament_target_dependencies(shutdown_test_ah rclcpp std_msgs hand_msgs)
 install(TARGETS
-  talker
+  # talker
   shutdown_test_ah
   DESTINATION lib/${PROJECT_NAME})
 # uncomment the following section in order to fill in
