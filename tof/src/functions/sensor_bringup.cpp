@@ -1,13 +1,5 @@
 #include "sensor_bringup.h"
 #include <stdio.h>
-#include <chrono>
-#include <functional>
-#include <memory>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <signal.h>
-#include <dlfcn.h>
 extern "C"
 {
   #include "../uld-driver/inc/vl53l7cx_api.h"
@@ -22,7 +14,6 @@ int sensor_bringup(VL53L7CX_Configuration *Dev, uint16_t sensor_address) {
     int status;
     // /* Initialize channel com */
     status = vl53l7cx_comms_init(&(*Dev).platform, sensor_address);
-    printf("Status: %d)\n",status);
     if(status) {
         printf("VL53L7CX comms init failed\n");
         return 1;
