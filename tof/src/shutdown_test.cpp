@@ -15,6 +15,7 @@ extern "C"
   
 
 }
+#include "functions/PointCalcs.h"
 #include "functions/sensor_bringup.h"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
@@ -44,13 +45,19 @@ class MinimalPublisher : public rclcpp::Node
 
 		
 
+		
+
 	}
+	
 
   private:
   	VL53L7CX_Configuration 	Dev;
 	uint16_t left_sensor = 0x52;
 	uint16_t right_sensor = 0x50;
 	int status;
+	// Create an instance of the PointCalcs class
+	PointCalcs point_calc;
+
 	void tof_setup() 
 	{
 		/** 
@@ -58,7 +65,7 @@ class MinimalPublisher : public rclcpp::Node
 		 */
 
 		// Start the left sensor
-		status = sensor_bringup(&Dev, left_sensor);
+		status = sensor_bringup(Dev, left_sensor);
 		if (status) {
 			// Something went wrong, throw an error and shutdown node
 			RCLCPP_ERROR(this->get_logger(), "Sensor %d bringup failed.", left_sensor);
@@ -132,6 +139,7 @@ class MinimalPublisher : public rclcpp::Node
 		}
 			tof_publisher_->publish(tof_all_zones);
 			printf("\npublish!!!!\n");
+			printf("Point class %i", point_calc.what);
 			
 	}
 	
@@ -156,6 +164,9 @@ class MinimalPublisher : public rclcpp::Node
 
 int main(int argc, char * argv[])
 {
+
+//   PointCalcs pointssss;
+//   printf("\n Hi %i \n", pointssss.what);	
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<MinimalPublisher>());
   rclcpp::shutdown();
