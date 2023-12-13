@@ -1,9 +1,13 @@
 #ifndef POINT_CALCS_H
 #define POINT_CALCS_H
-
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include "hand_msgs/msg/tof64.hpp"
 extern "C" {
   #include "../uld-driver/inc/vl53l7cx_api.h"
 }
+
+#include <algorithm>
+#include <vector>
 
 class PointCalcs {
     private:
@@ -31,9 +35,14 @@ class PointCalcs {
             225.00,234.60,246.80,261.87,278.13,293.20,305.40,315.00};
 
         void setup_angle_table();
+        
     public:
         PointCalcs(); 
+        uint8_t ConvertDist2XYZCoords8x8(VL53L7CX_ResultsData *ResultsData);//, XYZ_ZoneCoordinates_t *XYZ_ZoneCoordinates);
         int what = 13;
+        sensor_msgs::msg::PointCloud2 test();
+        sensor_msgs::msg::PointCloud2 test_process(hand_msgs::msg::Tof64 tof_in);
+        int get_valid_index(hand_msgs::msg::Tof64& tof_in, int zone_number);
 };
 
 #endif

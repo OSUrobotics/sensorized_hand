@@ -6,6 +6,22 @@
 #include <stdio.h>
 #include "math.h"
 #include "cmath" 
+#include <algorithm>
+#include <vector>
+// #include <pcl/PointCloud2.h>
+// #include <pcl_ros/point_cloud.h>
+// #include <pcl/point_types.h>
+// #include <pcl_conversions/pcl_conversions.h>
+// #include <sensor_msgs/PointField.h>
+// #include <sensor_msgs/point_cloud2_iterator.h>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <sensor_msgs/msg/point_field.hpp>
+#include "sensor_msgs/point_cloud2_iterator.hpp"
+#include "hand_msgs/msg/tof64.hpp"
+#include "hand_msgs/msg/tofzone.hpp"
+#include <iostream>
+#include <cctype>
+#include <random>
 extern "C"
 {
   #include "../uld-driver/inc/vl53l7cx_api.h"
@@ -13,6 +29,7 @@ extern "C"
 }
 PointCalcs::PointCalcs() {
     setup_angle_table();
+	// test();
 }
 
 void PointCalcs::setup_angle_table() {
@@ -26,6 +43,130 @@ void PointCalcs::setup_angle_table() {
     }
 }
 
+sensor_msgs::msg::PointCloud2 PointCalcs::test() {
+	using u32    = uint_least32_t; 
+	// using engine = std::mt19937;	
+	sensor_msgs::msg::PointCloud2 pcl_msg;
+	std::random_device rd;  // Will be used to obtain a seed for the random number engine
+    std::mt19937 generator(rd()); // Standard mersenne_twister_engine seeded with rd()
+    std::uniform_real_distribution<> distribute(0.0, 1.0);
+	pcl_msg.height = 8;
+	pcl_msg.width = 8;
+	pcl_msg.header.frame_id = "map";
+	//Iterators for PointCloud msg
+	sensor_msgs::PointCloud2Modifier mod(pcl_msg);
+	mod.resize(pcl_msg.height * pcl_msg.width);
+	mod.setPointCloud2FieldsByString(2, "xyz", "rgb");
+	sensor_msgs::PointCloud2Iterator<float> iter_x(pcl_msg, "x");
+	sensor_msgs::PointCloud2Iterator<float> iter_y(pcl_msg, "y");
+	sensor_msgs::PointCloud2Iterator<float> iter_z(pcl_msg, "z");
+	sensor_msgs::PointCloud2Iterator<uint8_t> iter_r(pcl_msg, "r");
+	sensor_msgs::PointCloud2Iterator<uint8_t> iter_g(pcl_msg, "g");
+	sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(pcl_msg, "b");
+	printf("HEREEEEE");
+	int counter = 0;
+	for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z, ++iter_r, ++iter_g, ++iter_b)
+	{
+	*iter_x = distribute( generator );
+	*iter_y = distribute( generator );
+	*iter_z = distribute( generator );
+	*iter_r = 255;
+	*iter_g = 10;
+	*iter_b = 10;
+	counter ++;
+	}
+	printf("Count: %d \n", counter);
+	return pcl_msg;
+}
+
+uint8_t  PointCalcs::ConvertDist2XYZCoords8x8(VL53L7CX_ResultsData *ResultsData) //, XYZ_ZoneCoordinates_t *XYZ_ZoneCoordinates)
+{	
+	
+	uint8_t ZoneNum;
+	float Hyp;
+	for (ZoneNum = 0; ZoneNum < 64; ZoneNum++)
+	{
+		if ((ResultsData->nb_target_detected[ZoneNum] > 0) && (ResultsData->distance_mm[ZoneNum] > 0) && ((ResultsData->target_status[ZoneNum] == 5) || (ResultsData->target_status[ZoneNum] == 6) || (ResultsData->target_status[ZoneNum] == 9)) )
+		{
+			Hyp = ResultsData->distance_mm[ZoneNum]/sin_of_pitch[ZoneNum];
+			// XYZ_ZoneCoordinates->Xpos[ZoneNum] = cos_of_yaw[ZoneNum]*cos_of_pitch[ZoneNum]*Hyp;
+			// XYZ_ZoneCoordinates->Ypos[ZoneNum] = sin_of_yaw[ZoneNum]*cos_of_pitch[ZoneNum]*Hyp;
+			// XYZ_ZoneCoordinates->Zpos[ZoneNum] = ResultsData->distance_mm[ZoneNum];
+		}
+		// else
+		// {
+		// 	XYZ_ZoneCoordinates->Xpos[ZoneNum] = 0;
+		// 	XYZ_ZoneCoordinates->Ypos[ZoneNum] = 0;
+		// 	XYZ_ZoneCoordinates->Zpos[ZoneNum] = 0;
+		// }
+	}
+	return 0;
+}
+
+
+sensor_msgs::msg::PointCloud2 PointCalcs::test_process(hand_msgs::msg::Tof64 tof_in){
+	sensor_msgs::msg::PointCloud2 pcl_msg;
+	pcl_msg.height = 8;
+	pcl_msg.width = 8;
+	pcl_msg.header.frame_id = "map";
+	//Iterators for PointCloud msg
+	sensor_msgs::PointCloud2Modifier mod(pcl_msg);
+	mod.resize(pcl_msg.height * pcl_msg.width);
+	mod.setPointCloud2FieldsByString(2, "xyz", "rgb");
+	sensor_msgs::PointCloud2Iterator<float> iter_x(pcl_msg, "x");
+	sensor_msgs::PointCloud2Iterator<float> iter_y(pcl_msg, "y");
+	sensor_msgs::PointCloud2Iterator<float> iter_z(pcl_msg, "z");
+	sensor_msgs::PointCloud2Iterator<uint8_t> iter_r(pcl_msg, "r");
+	sensor_msgs::PointCloud2Iterator<uint8_t> iter_g(pcl_msg, "g");
+	sensor_msgs::PointCloud2Iterator<uint8_t> iter_b(pcl_msg, "b");
+	float hyp;
+	// int counter = 0;
+	for (int zone_num = 0; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z, ++iter_r, ++iter_g, ++iter_b, ++zone_num)
+	{
+		// We want to pass that zone in and get back the index to grab (or -1 if bad reading)
+		int index = get_valid_index(tof_in, zone_num);
+
+		if (index == -1) {
+			// Bad reading, just set the values to zero
+			*iter_x = 0.0;
+			*iter_y = 0.0;
+			*iter_z = 0.0;
+			*iter_r = 255;
+			*iter_g = 10;
+			*iter_b = 10;
+		} else {
+			// Good reading, update with our index
+			// TODO: DO ACTUAL MATH HERE to get correct values
+			hyp = tof_in.tof_array[zone_num].distance[index]/1000.0/sin_of_pitch[zone_num];
+			if (hyp > 100.0) {
+				hyp = 100.0;
+			}
+			*iter_x = cos_of_yaw[zone_num]*cos_of_pitch[zone_num]*hyp;
+			*iter_y = sin_of_yaw[zone_num]*cos_of_pitch[zone_num]*hyp;
+			*iter_z = tof_in.tof_array[zone_num].distance[index]/1000.0;
+			*iter_r = 0;
+			*iter_g = 255;
+			*iter_b = 10;
+		}
+
+	}
+	return pcl_msg;
+
+}
+
+
+int PointCalcs::get_valid_index(hand_msgs::msg::Tof64& tof_in, int zone_number) {
+	std::vector<int> vec{tof_in.tof_array[zone_number].status[0], tof_in.tof_array[zone_number].status[1], tof_in.tof_array[zone_number].status[2], tof_in.tof_array[zone_number].status[3]};
+	auto it = std::find(vec.begin(), vec.end(), 5); //!= vec.end()
+	if (it != vec.end()) {
+		int index = it - vec.begin();
+		// printf("\n TOF IN: %d \n", index);
+		return index;
+	} else {
+		// printf("Nope \n");
+		return -1;
+	}
+}
 /* USER CODE END Includes */
  
 /* Private typedef -----------------------------------------------------------*/

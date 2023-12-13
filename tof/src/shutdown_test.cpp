@@ -15,12 +15,16 @@ extern "C"
   
 
 }
+
 #include "functions/PointCalcs.h"
 #include "functions/sensor_bringup.h"
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "hand_msgs/msg/tofzone.hpp"
 #include "hand_msgs/msg/tof64.hpp"
+#include <sensor_msgs/msg/point_cloud2.hpp>
+// #include "sensor_msgs/PointField.hpp"
+// #include "sensor_msgs/point_cloud2_iterator.hpp"
 
 using namespace std::chrono_literals;
 
@@ -36,13 +40,15 @@ class MinimalPublisher : public rclcpp::Node
 		rclcpp::on_shutdown(std::bind( &MinimalPublisher::tof_shutdown, this));
 		publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
 		tof_publisher_ = this->create_publisher<hand_msgs::msg::Tof64>("tof_msg", 10);
+		points_publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("points", 10);
 		timer_ = this->create_wall_timer(
-		500ms, std::bind(&MinimalPublisher::timer_callback, this));
+		1000ms, std::bind(&MinimalPublisher::timer_callback, this));
 		
 		// Setup and start the sensor
 		tof_setup();
 		// tof_shutdown();
 
+		
 		
 
 		
@@ -57,12 +63,14 @@ class MinimalPublisher : public rclcpp::Node
 	int status;
 	// Create an instance of the PointCalcs class
 	PointCalcs point_calc;
+	sensor_msgs::msg::PointCloud2 pcl_msg_back;
 
 	void tof_setup() 
 	{
 		/** 
 		 * Start the TOF sensor at the provided I2C address. 
 		 */
+		
 
 		// Start the left sensor
 		status = sensor_bringup(Dev, left_sensor);
@@ -90,6 +98,7 @@ class MinimalPublisher : public rclcpp::Node
 		uint8_t isReady, i, j, loop;
 		VL53L7CX_ResultsData 	Results;
 		auto tof_all_zones = hand_msgs::msg::Tof64();
+		auto tof_points = sensor_msgs::msg::PointCloud2();
 
 		loop = 0;
 		while(loop < 10)
@@ -105,21 +114,24 @@ class MinimalPublisher : public rclcpp::Node
 				* of 16 zones to print. For this example, only the data of first zone are 
 				* print */
 				// printf("Print data no : %3u\n", &Dev.streamcount);
-				for(i = 0; i < 16; i++)
+				for(i = 0; i < 64; i++)
 				{
-					// printf("Zone: %3d, Status: %3u, Distance: %4d mm, Ambient per: %4d , NBtargetdetect: %4d, Signal: %8d\n",
-					// 	i,
-					// 	Results.target_status[VL53L7CX_NB_TARGET_PER_ZONE*i],
-					// 	Results.distance_mm[VL53L7CX_NB_TARGET_PER_ZONE*i],
-					// 	Results.ambient_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i],
-					// 	Results.nb_target_detected[VL53L7CX_NB_TARGET_PER_ZONE*i],
-					// 	Results.signal_per_spad[VL53L7CX_NB_TARsGET_PER_ZONE*i]);
-					//printf("%d", VL53L7CX_NB_TARGET_PER_ZONE);
+					printf("Zone: %3d, Status: %3u, Distance: %4d mm, Ambient per: %4d , NBtargetdetect: %4d, Signal: %8d\n",
+						i,
+						Results.target_status[VL53L7CX_NB_TARGET_PER_ZONE*i],
+						Results.distance_mm[VL53L7CX_NB_TARGET_PER_ZONE*i],
+						Results.ambient_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i],
+						Results.nb_target_detected[VL53L7CX_NB_TARGET_PER_ZONE*i],
+						Results.signal_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i]);
+					// printf("%d", VL53L7CX_NB_TARGET_PER_ZONE);
 					auto tof_zone = hand_msgs::msg::Tofzone();
 					tof_zone.zone_num = i;
-					tof_zone.ambient = Results.ambient_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i];
-					tof_zone.num_target = Results.nb_target_detected[VL53L7CX_NB_TARGET_PER_ZONE*i];
-					tof_zone.num_spad = Results.nb_spads_enabled[VL53L7CX_NB_TARGET_PER_ZONE*i];
+					tof_zone.ambient = Results.ambient_per_spad[i];
+					
+					
+					tof_zone.num_target = Results.nb_target_detected[i];
+					// printf(" %d", tof_zone.num_target);
+					tof_zone.num_spad = Results.nb_spads_enabled[i];
 
 					for (j = 0; j < VL53L7CX_NB_TARGET_PER_ZONE; j++) {
 						uint16_t idx = VL53L7CX_NB_TARGET_PER_ZONE * i + j;
@@ -131,16 +143,21 @@ class MinimalPublisher : public rclcpp::Node
 					}
 					tof_all_zones.tof_array[i] = tof_zone;
 				}
+				printf("\n");
 				break;
 			}
-			printf("\n");
+			// printf("\n");
 			loop++;
 			WaitMs(&Dev.platform, 10);
 		}
 			tof_publisher_->publish(tof_all_zones);
 			printf("\npublish!!!!\n");
 			printf("Point class %i", point_calc.what);
-			
+			// pcl_msg_back = point_calc.test();
+			printf("WHATTTT");
+			// points_publisher_->publish(pcl_msg_back);
+			pcl_msg_back = point_calc.test_process(tof_all_zones);
+			points_publisher_->publish(pcl_msg_back);
 	}
 	
     void timer_callback()
@@ -154,7 +171,7 @@ class MinimalPublisher : public rclcpp::Node
     rclcpp::TimerBase::SharedPtr timer_;
     rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
 	rclcpp::Publisher<hand_msgs::msg::Tof64>::SharedPtr tof_publisher_;
-	
+	rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr points_publisher_;
     size_t count_;
 };
 

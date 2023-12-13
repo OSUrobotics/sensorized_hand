@@ -15,3 +15,7 @@ colcon clean workspace
 
 i2cdetect -y 1
 7 bit to 8 bit i2c representation....
+
+
+
+rosdep install --from-paths src -y --ignore-src

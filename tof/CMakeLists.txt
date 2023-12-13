@@ -10,13 +10,18 @@ endif()
 find_package(ament_cmake REQUIRED)   
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(hand_msgs REQUIRED) 
+# find_package(PCL REQUIRED)
 # CORE_INCLUDE_PATHS = "/uld-driver/inc"
 # PLATFORM_INCLUDE_PATHS = "/uld-driver/platform"
 
 include_directories("src/uld-driver/inc")
 include_directories("src/uld-driver/platform")
 include_directories("src/functions")
+# include_directories(${PCL_INCLUDE_DIRS})
+# link_directories(${PCL_LIBRARY_DIRS})
+# add_definitions(${PCL_DEFINITIONS})
 # add_custom_target(tof
 #                   /usr/bin/make -f "${CMAKE_CURRENT_SOURCE_DIR}/src/Makefile")
 
@@ -39,7 +44,7 @@ src/uld-driver/src/vl53l7cx_plugin_xtalk.c
 src/uld-driver/platform/platform.c
 )
 
-ament_target_dependencies(shutdown_test_ah rclcpp std_msgs hand_msgs)
+ament_target_dependencies(shutdown_test_ah rclcpp std_msgs sensor_msgs hand_msgs)
 install(TARGETS
   # talker
   shutdown_test_ah
