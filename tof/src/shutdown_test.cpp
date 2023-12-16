@@ -42,7 +42,7 @@ class MinimalPublisher : public rclcpp::Node
 		tof_publisher_ = this->create_publisher<hand_msgs::msg::Tof64>("tof_msg", 10);
 		points_publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("points", 10);
 		timer_ = this->create_wall_timer(
-		1000ms, std::bind(&MinimalPublisher::timer_callback, this));
+		100ms, std::bind(&MinimalPublisher::timer_callback, this));
 		
 		// Setup and start the sensor
 		tof_setup();

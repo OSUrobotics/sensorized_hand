@@ -62,7 +62,7 @@ int sensor_bringup(VL53L7CX_Configuration& Dev, uint16_t sensor_address) {
     // Set the ranging mode to continuous 
     status = vl53l7cx_set_ranging_mode(&Dev, VL53L7CX_RANGING_MODE_CONTINUOUS);
     // Set the ranging frequency to 15 Hz (for 8x8 zone can be 1-15, for 4x4 1-60)
-    vl53l7cx_set_ranging_frequency_hz(&Dev, 1);
+    vl53l7cx_set_ranging_frequency_hz(&Dev, 10);
 
     status = vl53l7cx_start_ranging(&Dev);
     return status;

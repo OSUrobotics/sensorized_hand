@@ -108,7 +108,7 @@ sensor_msgs::msg::PointCloud2 PointCalcs::test_process(hand_msgs::msg::Tof64 tof
 	sensor_msgs::msg::PointCloud2 pcl_msg;
 	pcl_msg.height = 8;
 	pcl_msg.width = 8;
-	pcl_msg.header.frame_id = "map";
+	pcl_msg.header.frame_id = "dist_right";
 	//Iterators for PointCloud msg
 	sensor_msgs::PointCloud2Modifier mod(pcl_msg);
 	mod.resize(pcl_msg.height * pcl_msg.width);
