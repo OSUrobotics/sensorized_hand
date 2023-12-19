@@ -96,7 +96,7 @@ struct comms_struct {
 };
 #endif
 
-int32_t vl53l7cx_comms_init(VL53L7CX_Platform * p_platform)
+int32_t vl53l7cx_comms_init(VL53L7CX_Platform * p_platform, uint16_t i2c_address_val, char i2c_bus[])
 {
 
 #ifdef STMVL53L7CX_KERNEL
@@ -107,8 +107,8 @@ int32_t vl53l7cx_comms_init(VL53L7CX_Platform * p_platform)
 	}
 #else
 	/* Create sensor at default i2c address */
-	p_platform->address = 0x52;
-	p_platform->fd = open("/dev/i2c-1", O_RDONLY);
+	p_platform->address = i2c_address_val; //0x52;
+	p_platform->fd = open(i2c_bus, O_RDONLY); // "/dev/i2c-1"
 	if (p_platform->fd == -1) {
 		LOG("Failed to open /dev/i2c-1\n");
 		return VL53L7CX_COMMS_ERROR;

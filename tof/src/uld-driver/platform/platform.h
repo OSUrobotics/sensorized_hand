@@ -94,7 +94,7 @@ typedef struct
  * zone means a lower RAM). The value must be between 1 and 4.
  */
 
-#define 	VL53L7CX_NB_TARGET_PER_ZONE		1U
+#define 	VL53L7CX_NB_TARGET_PER_ZONE		1U // was 1U
 
 /*
  * @brief The macro below can be used to avoid data conversion into the driver.
@@ -119,7 +119,7 @@ typedef struct
 // #define VL53L7CX_DISABLE_DISTANCE_MM
 // #define VL53L7CX_DISABLE_REFLECTANCE_PERCENT
 // #define VL53L7CX_DISABLE_TARGET_STATUS
-// #define VL53L7CX_DISABLE_MOTION_INDICATOR
+#define VL53L7CX_DISABLE_MOTION_INDICATOR
 
 
  /**
@@ -222,7 +222,7 @@ uint8_t WaitMs(
  * @param (int) *fd : pointer on a I2C channel descriptor.
  * @return (uint8_t) status : 0 if OK
  */
-int32_t vl53l7cx_comms_init(VL53L7CX_Platform * p_platform);
+int32_t vl53l7cx_comms_init(VL53L7CX_Platform * p_platform, uint16_t i2c_address_val, char i2c_bus[]);
 
 
 /**

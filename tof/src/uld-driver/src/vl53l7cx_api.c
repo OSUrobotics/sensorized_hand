@@ -14,6 +14,7 @@
 #include <string.h>
 #include "vl53l7cx_api.h"
 #include "vl53l7cx_buffers.h"
+#include <stdio.h>
 
 /**
  * @brief Inner function, not available outside this file. This function is used
@@ -580,6 +581,7 @@ uint8_t vl53l7cx_start_ranging(
 		p_dev->data_read_size += (uint32_t)4;
 	}
 	p_dev->data_read_size += (uint32_t)24;
+	printf("\n HERE \n HERE \n HERE \n Data size: %d \n", p_dev->data_read_size);
 
 	status |= vl53l7cx_dci_write_data(p_dev,
 			(uint8_t*)&(output), VL53L7CX_DCI_OUTPUT_LIST,
