@@ -33,7 +33,7 @@ include_directories("src/functions")
 # src/uld-driver/platform/platform.c
 # )
 # ament_target_dependencies(talker rclcpp std_msgs hand_msgs)
-add_executable(shutdown_test_ah src/shutdown_test.cpp
+add_executable(tof_publisher src/tof_publisher.cpp
 
 src/functions/PointCalcs.cpp
 src/functions/sensor_bringup.cpp
@@ -44,10 +44,10 @@ src/uld-driver/src/vl53l7cx_plugin_xtalk.c
 src/uld-driver/platform/platform.c
 )
 
-ament_target_dependencies(shutdown_test_ah rclcpp std_msgs sensor_msgs hand_msgs)
+ament_target_dependencies(tof_publisher rclcpp std_msgs sensor_msgs hand_msgs)
 install(TARGETS
   # talker
-  shutdown_test_ah
+  tof_publisher
   DESTINATION lib/${PROJECT_NAME})
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -64,5 +64,9 @@ if(BUILD_TESTING)
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 endif()
-
+# Install launch files.
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}/
+)
 ament_package()

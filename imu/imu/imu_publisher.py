@@ -20,7 +20,7 @@ class MinIMU_v5_pi:
 						gFullScale are 125, 245, 500, 1000, and 2000 [dps]
 						mFullScale are 4, 8, 12, and 16 [guass]
 	"""
-	def __init__(self, SMBusNum = 1, aFullScale=2, gFullScale=500, mFullScale=4):
+	def __init__(self, SMBusNum = 5, aFullScale=2, gFullScale=500, mFullScale=4):
 
 		#Accelerometer and Gyro Register addresses
 		self.Accel_Gyro_REG = dict(
@@ -256,8 +256,13 @@ class MinIMU_v5_pi:
 			
 def main():
 	IMU = MinIMU_v5_pi()
+	last_reading = time.time()
 	while True:
-		print(IMU.readAccelerometer())
+		
+		IMU.readAccelerometer()
+		this_reading = time.time()
+		print(this_reading-last_reading)
+		last_reading = this_reading
 		time.sleep(.01)
 
 

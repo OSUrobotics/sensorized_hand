@@ -37,10 +37,18 @@ class MinimalPublisher : public rclcpp::Node
     MinimalPublisher()//VL53L7CX_Configuration Dev_in)
     : Node("minimal_publisher"), count_(0)//, Dev{Dev_in}
     {
+
+		// Set up parameters for publisher name and i2c bus
+		this->declare_parameter("publisher_name", "tof_unknown");
+		this->declare_parameter("i2c_bus", "/dev/i2c-1");
+
+		std::string publisher_name = this->get_parameter("publisher_name").as_string();
+
+
 		rclcpp::on_shutdown(std::bind( &MinimalPublisher::tof_shutdown, this));
 		publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
-		tof_publisher_ = this->create_publisher<hand_msgs::msg::Tof64>("tof_msg", 10);
-		points_publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>("points", 10);
+		tof_publisher_ = this->create_publisher<hand_msgs::msg::Tof64>(publisher_name, 10);
+		points_publisher_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(publisher_name+"_points", 10);
 		timer_ = this->create_wall_timer(
 		100ms, std::bind(&MinimalPublisher::timer_callback, this));
 		
@@ -71,9 +79,9 @@ class MinimalPublisher : public rclcpp::Node
 		 * Start the TOF sensor at the provided I2C address. 
 		 */
 		
-
+		char i2c_bus_char[10];
 		// Start the left sensor
-		status = sensor_bringup(Dev, left_sensor);
+		status = sensor_bringup(Dev, left_sensor, strcpy(i2c_bus_char, this->get_parameter("i2c_bus").as_string().c_str()));
 		if (status) {
 			// Something went wrong, throw an error and shutdown node
 			RCLCPP_ERROR(this->get_logger(), "Sensor %d bringup failed.", left_sensor);

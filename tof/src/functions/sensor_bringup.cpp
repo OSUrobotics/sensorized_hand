@@ -6,14 +6,14 @@ extern "C"
 
 }
 
-int sensor_bringup(VL53L7CX_Configuration& Dev, uint16_t sensor_address) {
+int sensor_bringup(VL53L7CX_Configuration& Dev, uint16_t sensor_address, char i2c_bus[]) {
     
     // TODO: Update this method to be bool and return false if setup failure
     // uint16_t i2c_address = 0x50; // Correct address is 0x52
     uint8_t isAlive;
     int status;
     // /* Initialize channel com */
-    status = vl53l7cx_comms_init(&Dev.platform, sensor_address);
+    status = vl53l7cx_comms_init(&Dev.platform, sensor_address, i2c_bus);
     if(status) {
         printf("VL53L7CX comms init failed\n");
         return 1;
