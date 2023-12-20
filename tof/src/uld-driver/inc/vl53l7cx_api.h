@@ -260,10 +260,18 @@ extern "C" {
 
 
 /**
+ * @brief Structure BringupReturn contains the return message and status from sensor bringup.
+ */
+struct BringupReturn
+{
+	char message[30];
+	int status; 
+};
+
+/**
  * @brief Structure VL53L7CX_Configuration contains the sensor configuration.
  * User MUST not manually change these field, except for the sensor address.
  */
-
 typedef struct
 {
 	/* Platform, filled by customer into the 'platform.h' file */
