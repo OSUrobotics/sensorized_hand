@@ -19,6 +19,7 @@ i2cdetect -y 1
 
 
 rosdep install --from-paths src -y --ignore-src
+colcon build --symlink-install
 
 # Todo
 Possibly timestamp/header all of my custom msg types?
