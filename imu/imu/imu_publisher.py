@@ -1,27 +1,23 @@
 #!/usr/bin/python
 #This code was written by Caleb G. Teague in 2017
 
-"""To do:
-	Add more error handling?
-	Add more variable setup on initiation
-	Update the timing for my accurate polling
-	Create getYaw() and getAngle() functions
-"""
-
 import smbus
 import time
 import math
-# import thread
+import rclpy
+from rclpy.node import Node
+from hand_msgs.msg import Imu
 
-class MinIMU_v5_pi:
+
+class MinIMU_9(Node):
 	"""
 	Init function
 	Valid values for    aFullScale are 2, 4, 8, and 16 [g]
 						gFullScale are 125, 245, 500, 1000, and 2000 [dps]
 						mFullScale are 4, 8, 12, and 16 [guass]
 	"""
-	def __init__(self, SMBusNum = 5, aFullScale=2, gFullScale=500, mFullScale=4):
-
+	def __init__(self):
+		super().__init__('min_imu_9')
 		#Accelerometer and Gyro Register addresses
 		self.Accel_Gyro_REG = dict(
 			WHO_AM_I            = 0x0F,
@@ -36,7 +32,8 @@ class MinIMU_v5_pi:
 			OUTZ_L_XL           = 0x2C,
 			OUTZ_H_XL           = 0x2D)
 
-
+		self.aFullScale = 2
+		self.gFullScale = 500
 		#Unit scales
 		self.aScale = 0 #default: aScale = 2g/2^15,
 		self.gScale = 0 #default: gScale = 500dps/2^15
@@ -51,12 +48,42 @@ class MinIMU_v5_pi:
 		#i2c addresses
 		self.accel_gyro = 0x6b
 
+		self.declare_parameter('imu_bus', 4)
+		self.declare_parameter('publisher_name', "imu_left")
+		
+		# Set up IMU publisher
+		self.publisher_ = self.create_publisher(Imu, self.get_parameter('publisher_name').get_parameter_value().string_value, 10)
+
+		frequency = 100 # hz
+		# Set up callback timer
+		self.timer = self.create_timer(1/frequency, self.timer_callback)
+	
+	def start_imu(self):
+		imu_bus = self.get_parameter('imu_bus').get_parameter_value().integer_value
 		#Connect i2c bus
-		self.bus = smbus.SMBus(SMBusNum)
+		try:
+			self.bus = smbus.SMBus(imu_bus)
+			#Enable Accel, and Gyro
+			self.enableAccel_Gyro(self.aFullScale, self.gFullScale)
+		except Exception as e: 
+			print(e)
+			self.get_logger().error('Failed to start IMU on bus %d!' % imu_bus)
+			raise SystemExit  
 		
-		#Enable Accel, and Gyro
-		self.enableAccel_Gyro(aFullScale, gFullScale)
-		
+		self.get_logger().info('Started IMU on bus %d!' % imu_bus)
+
+	def timer_callback(self):
+
+		# Read accelerometer
+		imu_reading = self.readAccelerometer()
+
+		# Publish accelerometer reading
+		imu_msg = Imu()
+		imu_msg.x = imu_reading[0]
+		imu_msg.y = imu_reading[1]
+		imu_msg.z = imu_reading[2]
+		self.publisher_.publish(imu_msg)
+
 
 	"""Setup the needed registers for the Accelerometer and Gyro"""
 	def enableAccel_Gyro(self, aFullScale, gFullScale):
@@ -172,30 +199,18 @@ class MinIMU_v5_pi:
 			return strValue
 
 			
-def main():
-	IMU = MinIMU_v5_pi()
-	last_reading = time.time()
-	while True:
+def main(args=None):
+	# Initialize the node
+	rclpy.init(args=args)
+	imu = MinIMU_9()
+	try:
+		imu.start_imu()
+		rclpy.spin(imu)
+	except SystemExit:
+		imu.destroy_node()
+		rclpy.shutdown()
 		
-		IMU.readAccelerometer()
-		this_reading = time.time()
-		print(this_reading-last_reading)
-		last_reading = this_reading
-		time.sleep(.01)
-
-
-		"""while True:
-				i = 0
-				while i < 30:
-					i += 1
-					IMU.updateYaw()
-					time.sleep(0.004)           
-				print IMU.prevYaw[0]
-				#print  IMU.readAccelerometer() + IMU.readGyro() + IMU.readMagnetometer()
-				time.sleep(0.004)"""
-
 
 if __name__ == "__main__":
-	print("MinIMU is main")
 	main()
 	
