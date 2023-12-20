@@ -20,8 +20,6 @@ class MotorController(Node):
         # Create an instance of the Dynamixel class
         self.dc = Dynamixel(port = '/dev/ttyUSB0')
 
-        
-
         self.setup_motors()
         self.go_to_start_position()
 
@@ -47,15 +45,21 @@ class MotorController(Node):
             euler_to_quaternion(0, 0, 0)
 
 
-        self.publisher_ = self.create_publisher(String, 'topic', 10)
-        timer_period = 0.5  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.i = 0
+        # self.publisher_ = self.create_publisher(String, 'topic', 10)
+        # timer_period = 0.5  # seconds
+        # self.timer = self.create_timer(timer_period, self.timer_callback)
+        # self.i = 0
+
+        self.motor_pos_sub = self.create_subscription(String, 'topic', self.listener_callback, 10)
 
 
     def motor_timer_callback(self):
         # Here we publish motor position and effort
         pos, current = self.dc.read_pos_torque() 
+
+        # Fixing "negative" currents from max of 2 byte int to be actual negative values
+        current = [(lambda i: i-65536.0 if i > 32768 else i)(i) for i in current]
+
         joint_state = JointState()
         now = self.get_clock().now()
         joint_state.header.stamp = now.to_msg()
