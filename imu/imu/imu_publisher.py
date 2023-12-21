@@ -1,144 +1,89 @@
 #!/usr/bin/python
 #This code was written by Caleb G. Teague in 2017
 
-"""To do:
-	Add more error handling?
-	Add more variable setup on initiation
-	Update the timing for my accurate polling
-	Create getYaw() and getAngle() functions
-"""
-
 import smbus
 import time
 import math
-# import thread
+import rclpy
+from rclpy.node import Node
+from hand_msgs.msg import Imu
 
-class MinIMU_v5_pi:
+
+class MinIMU_9(Node):
 	"""
 	Init function
 	Valid values for    aFullScale are 2, 4, 8, and 16 [g]
 						gFullScale are 125, 245, 500, 1000, and 2000 [dps]
 						mFullScale are 4, 8, 12, and 16 [guass]
 	"""
-	def __init__(self, SMBusNum = 5, aFullScale=2, gFullScale=500, mFullScale=4):
-
+	def __init__(self):
+		super().__init__('min_imu_9')
 		#Accelerometer and Gyro Register addresses
 		self.Accel_Gyro_REG = dict(
-			FUNC_CFG_ACCESS     = 0x01,
-								\
-			FIFO_CTRL1          = 0x06,
-			FIFO_CTRL2          = 0x07,
-			FIFO_CTRL3          = 0x08,
-			FIFO_CTRL4          = 0x09,
-			FIFO_CTRL5          = 0x0A,
-			ORIENT_CFG_G        = 0x0B,
-								\
-			INT1_CTRL           = 0x0D,
-			INT2_CTRL           = 0x0E,
 			WHO_AM_I            = 0x0F,
 			CTRL1_XL            = 0x10,
 			CTRL2_G             = 0x11,
 			CTRL3_C             = 0x12,
-			CTRL4_C             = 0x13,
-			CTRL5_C             = 0x14,
-			CTRL6_C             = 0x15,
-			CTRL7_G             = 0x16,
-			CTRL8_XL            = 0x17,
-			CTRL9_XL            = 0x18,
-			CTRL10_C            = 0x19,
-								\
-			WAKE_UP_SRC         = 0x1B,
-			TAP_SRC             = 0x1C,
-			D6D_SRC             = 0x1D,
 			STATUS_REG          = 0x1E,
-								\
-			OUT_TEMP_L          = 0x20,
-			OUT_TEMP_H          = 0x21,
-			OUTX_L_G            = 0x22,
-			OUTX_H_G            = 0x23,
-			OUTY_L_G            = 0x24,
-			OUTY_H_G            = 0x25,
-			OUTZ_L_G            = 0x26,
-			OUTZ_H_G            = 0x27,
 			OUTX_L_XL           = 0x28,
 			OUTX_H_XL           = 0x29,
 			OUTY_L_XL           = 0x2A,
 			OUTY_H_XL           = 0x2B,
 			OUTZ_L_XL           = 0x2C,
-			OUTZ_H_XL           = 0x2D,
-								\
-			FIFO_STATUS1        = 0x3A,
-			FIFO_STATUS2        = 0x3B,
-			FIFO_STATUS3        = 0x3C,
-			FIFO_STATUS4        = 0x3D,
-			FIFO_DATA_OUT_L     = 0x3E,
-			FIFO_DATA_OUT_H     = 0x3F,
-			TIMESTAMP0_REG      = 0x40,
-			TIMESTAMP1_REG      = 0x41,
-			TIMESTAMP2_REG      = 0x42,
-								\
-			STEP_TIMESTAMP_L    = 0x49,
-			STEP_TIMESTAMP_H    = 0x4A,
-			STEP_COUNTER_L      = 0x4B,
-			STEP_COUNTER_H      = 0x4C,
-								\
-			FUNC_SRC            = 0x53,
-								\
-			TAP_CFG             = 0x58,
-			TAP_THS_6D          = 0x59,
-			INT_DUR2            = 0x5A,
-			WAKE_UP_THS         = 0x5B,
-			WAKE_UP_DUR         = 0x5C,
-			FREE_FALL           = 0x5D,
-			MD1_CFG             = 0x5E,
-			MD2_CFG             = 0x5F)
+			OUTZ_H_XL           = 0x2D)
 
-		#Magnemometer addresses
-		self.Mag_REG= dict(
-			WHO_AM_I    = 0x0F,
-						\
-			CTRL_REG1   = 0x20,
-			CTRL_REG2   = 0x21,
-			CTRL_REG3   = 0x22,
-			CTRL_REG4   = 0x23,
-			CTRL_REG5   = 0x24,
-						\
-			STATUS_REG  = 0x27,
-			OUT_X_L     = 0x28,
-			OUT_X_H     = 0x29,
-			OUT_Y_L     = 0x2A,
-			OUT_Y_H     = 0x2B,
-			OUT_Z_L     = 0x2C,
-			OUT_Z_H     = 0x2D,
-			TEMP_OUT_L  = 0x2E,
-			TEMP_OUT_H  = 0x2F,
-			INT_CFG     = 0x30,
-			INT_SRC     = 0x31,
-			INT_THS_L   = 0x32,
-			INT_THS_H   = 0x33)
-
+		self.aFullScale = 2
+		self.gFullScale = 500
 		#Unit scales
 		self.aScale = 0 #default: aScale = 2g/2^15,
 		self.gScale = 0 #default: gScale = 500dps/2^15
 		self.mScale = 0 #default: mScale = 4guass/2^15
 		
 		#Variables for updateAngle and updateYaw
-		self.prevAngle = [[0,0,0]] #x, y, z (roll, pitch, yaw)
 		self.prevYaw = [0]
 		self.tau = 0.04 #Want this roughly 10x the dt
 		self.lastTimeAngle = [0]
 		self.lastTimeYaw = [0]
 	
 		#i2c addresses
-		self.mag = 0x1e #0011110 (from docs)
 		self.accel_gyro = 0x6b
 
+		self.declare_parameter('imu_bus', 4)
+		self.declare_parameter('publisher_name', "imu_left")
+		
+		# Set up IMU publisher
+		self.publisher_ = self.create_publisher(Imu, self.get_parameter('publisher_name').get_parameter_value().string_value, 10)
+
+		frequency = 100 # hz
+		# Set up callback timer
+		self.timer = self.create_timer(1/frequency, self.timer_callback)
+	
+	def start_imu(self):
+		imu_bus = self.get_parameter('imu_bus').get_parameter_value().integer_value
 		#Connect i2c bus
-		self.bus = smbus.SMBus(SMBusNum)
+		try:
+			self.bus = smbus.SMBus(imu_bus)
+			#Enable Accel, and Gyro
+			self.enableAccel_Gyro(self.aFullScale, self.gFullScale)
+		except Exception as e: 
+			print(e)
+			self.get_logger().error('Failed to start IMU on bus %d!' % imu_bus)
+			raise SystemExit  
 		
-		#Enable Mag, Accel, and Gyro
-		self.enableAccel_Gyro(aFullScale, gFullScale)
-		
+		self.get_logger().info('Started IMU on bus %d!' % imu_bus)
+
+	def timer_callback(self):
+
+		# Read accelerometer
+		imu_reading = self.readAccelerometer()
+
+		# Publish accelerometer reading
+		imu_msg = Imu()
+		imu_msg.x = imu_reading[0]
+		imu_msg.y = imu_reading[1]
+		imu_msg.z = imu_reading[2]
+		self.publisher_.publish(imu_msg)
+
 
 	"""Setup the needed registers for the Accelerometer and Gyro"""
 	def enableAccel_Gyro(self, aFullScale, gFullScale):
@@ -254,30 +199,18 @@ class MinIMU_v5_pi:
 			return strValue
 
 			
-def main():
-	IMU = MinIMU_v5_pi()
-	last_reading = time.time()
-	while True:
+def main(args=None):
+	# Initialize the node
+	rclpy.init(args=args)
+	imu = MinIMU_9()
+	try:
+		imu.start_imu()
+		rclpy.spin(imu)
+	except SystemExit:
+		imu.destroy_node()
+		rclpy.shutdown()
 		
-		IMU.readAccelerometer()
-		this_reading = time.time()
-		print(this_reading-last_reading)
-		last_reading = this_reading
-		time.sleep(.01)
-
-
-		"""while True:
-				i = 0
-				while i < 30:
-					i += 1
-					IMU.updateYaw()
-					time.sleep(0.004)           
-				print IMU.prevYaw[0]
-				#print  IMU.readAccelerometer() + IMU.readGyro() + IMU.readMagnetometer()
-				time.sleep(0.004)"""
-
 
 if __name__ == "__main__":
-	print("MinIMU is main")
 	main()
 	

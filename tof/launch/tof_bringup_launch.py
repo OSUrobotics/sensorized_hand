@@ -8,7 +8,17 @@ def generate_launch_description():
             executable='tof_publisher',
             name='tof_publisher_right',
             output="screen",
+            emulate_tty=True,
             parameters=[
                 {"publisher_name": "tof_right"},
-                {"i2c_bus": "/dev/i2c-1"}])
+                {"i2c_bus": "/dev/i2c-1"}]),
+        launch_ros.actions.Node(
+            package='tof',
+            executable='tof_publisher',
+            name='tof_publisher_left',
+            output="screen",
+            emulate_tty=True,
+            parameters=[
+                {"publisher_name": "tof_left"},
+                {"i2c_bus": "/dev/i2c-4"}])
   ])

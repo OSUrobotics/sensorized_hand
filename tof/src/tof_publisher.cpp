@@ -34,6 +34,8 @@ using namespace std::chrono_literals;
 class MinimalPublisher : public rclcpp::Node 
 {
   public:
+	std::string publisher_name;
+
     MinimalPublisher()//VL53L7CX_Configuration Dev_in)
     : Node("minimal_publisher"), count_(0)//, Dev{Dev_in}
     {
@@ -42,7 +44,7 @@ class MinimalPublisher : public rclcpp::Node
 		this->declare_parameter("publisher_name", "tof_unknown");
 		this->declare_parameter("i2c_bus", "/dev/i2c-1");
 
-		std::string publisher_name = this->get_parameter("publisher_name").as_string();
+		publisher_name = this->get_parameter("publisher_name").as_string();
 
 
 		rclcpp::on_shutdown(std::bind( &MinimalPublisher::tof_shutdown, this));
@@ -68,7 +70,7 @@ class MinimalPublisher : public rclcpp::Node
   	VL53L7CX_Configuration 	Dev;
 	uint16_t left_sensor = 0x52;
 	uint16_t right_sensor = 0x50;
-	int status;
+	BringupReturn return_struct;
 	// Create an instance of the PointCalcs class
 	PointCalcs point_calc;
 	sensor_msgs::msg::PointCloud2 pcl_msg_back;
@@ -81,10 +83,11 @@ class MinimalPublisher : public rclcpp::Node
 		
 		char i2c_bus_char[10];
 		// Start the left sensor
-		status = sensor_bringup(Dev, left_sensor, strcpy(i2c_bus_char, this->get_parameter("i2c_bus").as_string().c_str()));
-		if (status) {
+		return_struct = sensor_bringup(Dev, left_sensor, strcpy(i2c_bus_char, this->get_parameter("i2c_bus").as_string().c_str()));
+		if (return_struct.status) {
 			// Something went wrong, throw an error and shutdown node
-			RCLCPP_ERROR(this->get_logger(), "Sensor %d bringup failed.", left_sensor);
+			RCLCPP_ERROR(this->get_logger(), "Sensor %s bringup failed.", publisher_name.c_str());
+			RCLCPP_ERROR(this->get_logger(), "Error:    %s", return_struct.message);
 			rclcpp::shutdown();
 		} 
 	}
@@ -124,13 +127,13 @@ class MinimalPublisher : public rclcpp::Node
 				// printf("Print data no : %3u\n", &Dev.streamcount);
 				for(i = 0; i < 64; i++)
 				{
-					printf("Zone: %3d, Status: %3u, Distance: %4d mm, Ambient per: %4d , NBtargetdetect: %4d, Signal: %8d\n",
-						i,
-						Results.target_status[VL53L7CX_NB_TARGET_PER_ZONE*i],
-						Results.distance_mm[VL53L7CX_NB_TARGET_PER_ZONE*i],
-						Results.ambient_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i],
-						Results.nb_target_detected[VL53L7CX_NB_TARGET_PER_ZONE*i],
-						Results.signal_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i]);
+					// printf("Zone: %3d, Status: %3u, Distance: %4d mm, Ambient per: %4d , NBtargetdetect: %4d, Signal: %8d\n",
+					// 	i,
+					// 	Results.target_status[VL53L7CX_NB_TARGET_PER_ZONE*i],
+					// 	Results.distance_mm[VL53L7CX_NB_TARGET_PER_ZONE*i],
+					// 	Results.ambient_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i],
+					// 	Results.nb_target_detected[VL53L7CX_NB_TARGET_PER_ZONE*i],
+					// 	Results.signal_per_spad[VL53L7CX_NB_TARGET_PER_ZONE*i]);
 					// printf("%d", VL53L7CX_NB_TARGET_PER_ZONE);
 					auto tof_zone = hand_msgs::msg::Tofzone();
 					tof_zone.zone_num = i;
@@ -151,21 +154,23 @@ class MinimalPublisher : public rclcpp::Node
 					}
 					tof_all_zones.tof_array[i] = tof_zone;
 				}
-				printf("\n");
+				// printf("\n");
 				break;
 			}
 			// printf("\n");
 			loop++;
-			WaitMs(&Dev.platform, 10);
+			WaitMs(&Dev.platform, 5);
 		}
 			tof_publisher_->publish(tof_all_zones);
-			printf("\npublish!!!!\n");
-			printf("Point class %i", point_calc.what);
-			// pcl_msg_back = point_calc.test();
-			printf("WHATTTT");
+			// printf("\npublish!!!!\n");
+			// printf("Point class %i", point_calc.what);
+			// // pcl_msg_back = point_calc.test();
+			// printf("WHATTTT");
 			// points_publisher_->publish(pcl_msg_back);
-			pcl_msg_back = point_calc.test_process(tof_all_zones);
-			points_publisher_->publish(pcl_msg_back);
+
+			// Temporary to test speed
+			// pcl_msg_back = point_calc.test_process(tof_all_zones);
+			// points_publisher_->publish(pcl_msg_back);
 	}
 	
     void timer_callback()
