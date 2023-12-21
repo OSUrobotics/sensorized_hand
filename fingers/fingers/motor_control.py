@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from dynamixel_control import Dynamixel
+from rclpy.executors import MultiThreadedExecutor
 from std_msgs.msg import String
 from time import sleep
 from rclpy.qos import QoSProfile
@@ -8,6 +9,11 @@ from sensor_msgs.msg import JointState
 from tf2_ros import TransformBroadcaster, TransformStamped
 from math import sin, cos, pi
 from geometry_msgs.msg import Quaternion
+from hand_msgs.action import Gripper
+from rclpy.action import ActionServer
+import threading
+from time import sleep
+
 
 
 class MotorController(Node):
@@ -15,7 +21,8 @@ class MotorController(Node):
     def __init__(self):
         super().__init__('motor_controller')
 
-
+        # Create a quasi-mutex for disabling motor polling while in action server state
+        self.mutex = False
 
         # Create an instance of the Dynamixel class
         self.dc = Dynamixel(port = '/dev/ttyUSB0')
@@ -50,13 +57,96 @@ class MotorController(Node):
         # self.timer = self.create_timer(timer_period, self.timer_callback)
         # self.i = 0
 
-        self.motor_pos_sub = self.create_subscription(String, 'topic', self.listener_callback, 10)
+        # self.motor_pos_sub = self.create_subscription(String, 'topic', self.listener_callback, 10)
+
+        # Set up motor control action server
+        
+        self.act_serv = ActionServer(self, Gripper, 'gripper_command', self.gipper_command)
+
+    def gipper_command(self, goal):
+        command = goal.request.command
+        if command == "close-parallel":
+            result = self.close_parallel(goal)
+            return result
+        else:
+            self.get_logger().error('Gripper command "%s" not implemented.' % command)
+            result.result = 0
+            return result
+        
+        #  goal_handle.succeed()
+
+
+    def close_parallel(self, goal):
+        # Goal is to close and maintain parallel interfaces between distal links
+        # 1) set goal current 600 dist, 400 prox???
+        # 2) while not at goal current
+            # - set target position to be a bit inside the current position
+            # - wait a small period of time
+        # 
+
+        rate = self.create_rate(10)
+        current_target = [800, 1000, 800, 1000]
+        # Set the goal current
+
+        # Start by disabling current pose publisher
+        self.mutex = True
+        rate.sleep()
+
+        # Set the current goal current
+        for i in range(4):
+            self.dc.add_parameter(id = i, address = 102, byte_length = 2, value = current_target[i])
+        self.dc.send_parameters()
+
+        # Change velocity profile
+        for i in range(4):
+            self.dc.add_parameter(id = i, address = 112, byte_length = 4, value = 25)
+        self.dc.send_parameters()
+
+        # Update motor position until we reach a current thresehold
+        rate = self.create_rate(10)
+        while not self.check_if_current_at_target(current_target):
+            # Publish our current joint pose
+            pos, current = self.dc.read_pos_torque() 
+            self.publish_pose(pos, current)
+
+            left = self.dc.dxls[0].read_position_rad #+ .05
+            right = -left #self.dc.dxls[2].read_position_rad #- .05 
+            # new_pos_target = [left+.02, -left, right-.02, -right]
+            new_pos_target = [left+2.0, -(left-.02), (right-2.0), -(right+.02)]
+
+            self.dc.go_to_position_all(new_pos_target)
+            rate.sleep()
+
+        self.mutex = False
+        goal.succeed()
+        result = Gripper.Result()
+        # TODO: Update to return an actual usable result
+        result.result = 2
+        return result
+
+
+    def check_if_current_at_target(self, target_current):
+        # Return true if both proximal motors are at their target current
+        for i in [0,2]:
+            dxl_cur = self.dc.dxls[i].current_torque
+            if dxl_cur > 32768:
+                dxl_cur = 65536-dxl_cur
+            print(f"Current: {dxl_cur}, target: {target_current[i]}")
+            if dxl_cur - target_current[i] < -10:
+                return False
+        return True
+
 
 
     def motor_timer_callback(self):
-        # Here we publish motor position and effort
-        pos, current = self.dc.read_pos_torque() 
+        if not self.mutex: 
+            # Here we publish motor position and effort
+            pos, current = self.dc.read_pos_torque() 
+            self.publish_pose(pos, current)
 
+            
+
+    def publish_pose(self, position, current):
         # Fixing "negative" currents from max of 2 byte int to be actual negative values
         current = [(lambda i: i-65536.0 if i > 32768 else i)(i) for i in current]
 
@@ -64,7 +154,7 @@ class MotorController(Node):
         now = self.get_clock().now()
         joint_state.header.stamp = now.to_msg()
         joint_state.name = ['prox_right_joint', 'dist_right_joint', 'prox_left_joint', 'dist_left_joint']
-        joint_state.position = pos
+        joint_state.position = position
         joint_state.effort = [float(x) for x in current]
 
         self.odom_trans.header.stamp = now.to_msg()
@@ -83,7 +173,7 @@ class MotorController(Node):
         self.dc.add_dynamixel(type="XL-330", ID_number=2, calibration=[1023,2048,3073]) 
         self.dc.add_dynamixel(type="XL-330", ID_number=3, calibration=[1023,2048,3073])
 
-        self.dc.set_speed(80)
+        self.dc.set_speed(40)
         self.dc.setup_all()
         self.dc.update_PID(1000,400,2000)
         # Give it a small break 
@@ -94,7 +184,10 @@ class MotorController(Node):
     
     def go_to_start_position(self):
         # Semi-blocking command to move to the start position
-        start_position = [0, 0, 0, 0]
+        start_position = [-.8, 0, .8, 0]
+        self.dc.go_to_position_all(start_position)
+        sleep(2)
+        start_position = [-.8, .8, .8, -.8]
         self.dc.go_to_position_all(start_position)
         sleep(2)
 
@@ -118,14 +211,22 @@ def main(args=None):
 
     motor_controller = MotorController()
     rclpy.get_default_context().on_shutdown(motor_controller.shutdown_motors)
+    executor = MultiThreadedExecutor()
 
-    rclpy.spin(motor_controller)
+    rclpy.spin(motor_controller, executor=executor)
+    # Spin in a separate thread
+    # thread = threading.Thread(target=rclpy.spin, args=(motor_controller, ), daemon=True)
+    # thread.start()
 
     # Destroy the node explicitly
     # (optional - otherwise it will be done automatically
     # when the garbage collector destroys the node object)
     # motor_controller.destroy_node()
     # rclpy.shutdown()
+    # rate = motor_controller.create_rate(2)
+    # while rclpy.ok():
+    #     print("broke")
+    #     rate.sleep()
 
 
 if __name__ == '__main__':
