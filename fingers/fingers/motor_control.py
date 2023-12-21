@@ -68,6 +68,9 @@ class MotorController(Node):
         if command == "close-parallel":
             result = self.close_parallel(goal)
             return result
+        elif command == "open":
+            result = self.open_gripper(goal)
+            return result
         else:
             self.get_logger().error('Gripper command "%s" not implemented.' % command)
             result.result = 0
@@ -75,6 +78,14 @@ class MotorController(Node):
         
         #  goal_handle.succeed()
 
+    def open_gripper(self, goal):
+        self.go_to_start_position()
+
+        # TODO: Implement error checking and actual feedback here
+        goal.succeed()
+        result = Gripper.Result()
+        result.result = 2
+        return result
 
     def close_parallel(self, goal):
         # Goal is to close and maintain parallel interfaces between distal links
@@ -184,12 +195,18 @@ class MotorController(Node):
     
     def go_to_start_position(self):
         # Semi-blocking command to move to the start position
+        self.mutex = True
+        sleep(.1)
+        self.dc.set_speed(80)
+        
         start_position = [-.8, 0, .8, 0]
         self.dc.go_to_position_all(start_position)
         sleep(2)
         start_position = [-.8, .8, .8, -.8]
         self.dc.go_to_position_all(start_position)
         sleep(2)
+        self.dc.set_speed(40)
+        self.mutex = False
 
 
     def timer_callback(self):
