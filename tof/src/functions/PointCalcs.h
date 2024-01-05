@@ -41,7 +41,7 @@ class PointCalcs {
         uint8_t ConvertDist2XYZCoords8x8(VL53L7CX_ResultsData *ResultsData);//, XYZ_ZoneCoordinates_t *XYZ_ZoneCoordinates);
         int what = 13;
         sensor_msgs::msg::PointCloud2 test();
-        sensor_msgs::msg::PointCloud2 test_process(hand_msgs::msg::Tof64 tof_in);
+        sensor_msgs::msg::PointCloud2 test_process(hand_msgs::msg::Tof64 tof_in, char side);
         int get_valid_index(hand_msgs::msg::Tof64& tof_in, int zone_number);
 };
 

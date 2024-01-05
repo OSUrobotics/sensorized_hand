@@ -11,7 +11,7 @@ def generate_launch_description():
             emulate_tty=True,
             parameters=[
                 {"publisher_name": "tof_right"},
-                {"i2c_bus": "/dev/i2c-1"}]),
+                {"i2c_bus": "/dev/i2c-4"}]),
         launch_ros.actions.Node(
             package='tof',
             executable='tof_publisher',
@@ -20,5 +20,5 @@ def generate_launch_description():
             emulate_tty=True,
             parameters=[
                 {"publisher_name": "tof_left"},
-                {"i2c_bus": "/dev/i2c-4"}])
+                {"i2c_bus": "/dev/i2c-1"}])
   ])

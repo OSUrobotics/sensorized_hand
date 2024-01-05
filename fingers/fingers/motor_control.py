@@ -201,10 +201,16 @@ class MotorController(Node):
         
         start_position = [-.8, 0, .8, 0]
         self.dc.go_to_position_all(start_position)
-        sleep(2)
+        self.mutex = False
+        sleep(1.9)
+        self.mutex = True
+        sleep(.1)
         start_position = [-.8, .8, .8, -.8]
         self.dc.go_to_position_all(start_position)
-        sleep(2)
+        self.mutex = False
+        sleep(1.9)
+        self.mutex = True
+        sleep(.1)
         self.dc.set_speed(40)
         self.mutex = False
 

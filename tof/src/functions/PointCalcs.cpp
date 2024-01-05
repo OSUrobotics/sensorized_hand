@@ -104,11 +104,17 @@ uint8_t  PointCalcs::ConvertDist2XYZCoords8x8(VL53L7CX_ResultsData *ResultsData)
 }
 
 
-sensor_msgs::msg::PointCloud2 PointCalcs::test_process(hand_msgs::msg::Tof64 tof_in){
+sensor_msgs::msg::PointCloud2 PointCalcs::test_process(hand_msgs::msg::Tof64 tof_in, char side){
 	sensor_msgs::msg::PointCloud2 pcl_msg;
 	pcl_msg.height = 8;
 	pcl_msg.width = 8;
-	pcl_msg.header.frame_id = "dist_right";
+
+	if (side == 'l') {
+		pcl_msg.header.frame_id = "left_tof";
+	} else {
+		pcl_msg.header.frame_id = "right_tof";
+	}
+	
 	//Iterators for PointCloud msg
 	sensor_msgs::PointCloud2Modifier mod(pcl_msg);
 	mod.resize(pcl_msg.height * pcl_msg.width);
@@ -128,12 +134,14 @@ sensor_msgs::msg::PointCloud2 PointCalcs::test_process(hand_msgs::msg::Tof64 tof
 
 		if (index == -1) {
 			// Bad reading, just set the values to zero
+			
+			*iter_r = 255;
+			*iter_g = 0;
+			*iter_b = 0;
 			*iter_x = 0.0;
 			*iter_y = 0.0;
 			*iter_z = 0.0;
-			*iter_r = 255;
-			*iter_g = 10;
-			*iter_b = 10;
+			
 		} else {
 			// Good reading, update with our index
 			// TODO: DO ACTUAL MATH HERE to get correct values
@@ -141,12 +149,21 @@ sensor_msgs::msg::PointCloud2 PointCalcs::test_process(hand_msgs::msg::Tof64 tof
 			if (hyp > 100.0) {
 				hyp = 100.0;
 			}
-			*iter_x = cos_of_yaw[zone_num]*cos_of_pitch[zone_num]*hyp;
+			*iter_x = -cos_of_yaw[zone_num]*cos_of_pitch[zone_num]*hyp;
 			*iter_y = sin_of_yaw[zone_num]*cos_of_pitch[zone_num]*hyp;
 			*iter_z = tof_in.tof_array[zone_num].distance[index]/1000.0;
-			*iter_r = 0;
-			*iter_g = 255;
-			*iter_b = 10;
+			// *iter_r = 0;
+			// *iter_g = 255;
+			// *iter_b = 10;
+			if (side == 'l') {
+				*iter_r = 0;
+				*iter_g = 0;
+				*iter_b = 255;
+			} else {
+				*iter_r = 0;
+				*iter_g = 255;
+				*iter_b = 0;
+			}
 		}
 
 	}

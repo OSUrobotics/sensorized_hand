@@ -169,8 +169,12 @@ class MinimalPublisher : public rclcpp::Node
 			// points_publisher_->publish(pcl_msg_back);
 
 			// Temporary to test speed
-			// pcl_msg_back = point_calc.test_process(tof_all_zones);
-			// points_publisher_->publish(pcl_msg_back);
+			if (publisher_name == "tof_right") {
+				pcl_msg_back = point_calc.test_process(tof_all_zones, 'r');
+			} else {
+				pcl_msg_back = point_calc.test_process(tof_all_zones, 'l');
+			}
+			points_publisher_->publish(pcl_msg_back);
 	}
 	
     void timer_callback()
