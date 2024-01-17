@@ -73,13 +73,26 @@ class MotorController(Node):
             return result
         else:
             self.get_logger().error('Gripper command "%s" not implemented.' % command)
-            result.result = 0
+            result = 0
             return result
         
         #  goal_handle.succeed()
 
     def open_gripper(self, goal):
+        self.mutex = True
+        sleep(.1)
+        print("opening gripper")
+        self.dc.reboot_dynamixel()
+        for id in self.dc.dxls.keys():
+            self.dc.packetHandler.reboot(self.dc.portHandler, id)
+        sleep(.25)
+        for id in self.dc.dxls.keys():
+            self.dc.enable_torque(id, True)
+        
         self.go_to_start_position()
+        self.mutex = False
+        
+        
 
         # TODO: Implement error checking and actual feedback here
         goal.succeed()
@@ -96,7 +109,7 @@ class MotorController(Node):
         # 
 
         rate = self.create_rate(10)
-        current_target = [800, 1000, 800, 1000]
+        current_target = [600, 800, 600, 800]
         # Set the goal current
 
         # Start by disabling current pose publisher
@@ -127,7 +140,7 @@ class MotorController(Node):
 
             self.dc.go_to_position_all(new_pos_target)
             rate.sleep()
-
+        self.dc.set_speed(10)
         self.mutex = False
         goal.succeed()
         result = Gripper.Result()
@@ -185,6 +198,11 @@ class MotorController(Node):
         self.dc.add_dynamixel(type="XL-330", ID_number=3, calibration=[1023,2048,3073])
 
         self.dc.set_speed(40)
+        # Update abs max current
+        current_target = [900, 1100, 900, 1100]
+        for i in range(4):
+            self.dc.add_parameter(id = i, address = 38, byte_length = 2, value = current_target[i])
+        self.dc.send_parameters()
         self.dc.setup_all()
         self.dc.update_PID(1000,400,2000)
         # Give it a small break 
