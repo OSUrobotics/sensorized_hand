@@ -9,7 +9,7 @@ ros2 run tof talker
 colcon build --packages-select tof
 
 ros2 interface show hand_msgs/msg/Tofzone
-
+colcon build --symlink-install
 
 colcon clean workspace
 
@@ -25,3 +25,7 @@ rate.sleep is blocking in motor implementation - temporarily just using time sle
 
 # Todo
 Possibly timestamp/header all of my custom msg types?
+
+
+vcgencmd get_throttled
+vcgencmd measure_temp

@@ -254,7 +254,20 @@ def main(args=None):
     rclpy.get_default_context().on_shutdown(motor_controller.shutdown_motors)
     executor = MultiThreadedExecutor()
 
-    rclpy.spin(motor_controller, executor=executor)
+
+    try:
+        rclpy.spin(motor_controller, executor=executor)
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        motor_controller.mutex = True
+        sleep(.1)
+        motor_controller.dc.reboot_dynamixel()
+        motor_controller.dc.end_program()
+        motor_controller.get_logger().info("Dynamixel torque disabled, port closed.")
+        pass
+    finally:
+        # motor_controller.destroy_node()
+        rclpy.try_shutdown()
+    
     # Spin in a separate thread
     # thread = threading.Thread(target=rclpy.spin, args=(motor_controller, ), daemon=True)
     # thread.start()
