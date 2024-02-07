@@ -29,7 +29,8 @@ class MotorController(Node):
 
         self.setup_motors()
         self.go_to_start_position()
-
+        self.closed = False
+        self.cancelled = False
         # General idea
         """
         1) read motor position and torque and publish it
@@ -66,9 +67,15 @@ class MotorController(Node):
     def gipper_command(self, goal):
         command = goal.request.command
         if command == "close-parallel":
+            # Start a callback 
+            self.open_time = self.create_timer(15, self.cancel_callback)
+            self.closed = True
+            self.cancelled = False
+            
             result = self.close_parallel(goal)
             return result
         elif command == "open":
+            self.closed = False
             result = self.open_gripper(goal)
             return result
         else:
@@ -77,9 +84,18 @@ class MotorController(Node):
             return result
         
         #  goal_handle.succeed()
+    def cancel_callback(self):
+        self.get_logger().error('Opening, no open request in a few seconds!')
+        self.cancelled = True
+        self.open_gripper(None)
+        self.open_time.destroy()
 
     def open_gripper(self, goal):
+    
         self.mutex = True
+        if self.open_time:
+            self.open_time.destroy()
+            
         sleep(.1)
         print("opening gripper")
         self.dc.reboot_dynamixel()
@@ -95,10 +111,11 @@ class MotorController(Node):
         
 
         # TODO: Implement error checking and actual feedback here
-        goal.succeed()
-        result = Gripper.Result()
-        result.result = 2
-        return result
+        if goal:
+            goal.succeed()
+            result = Gripper.Result()
+            result.result = 2
+            return result
 
     def close_parallel(self, goal):
         # Goal is to close and maintain parallel interfaces between distal links
@@ -128,7 +145,7 @@ class MotorController(Node):
 
         # Update motor position until we reach a current thresehold
         rate = self.create_rate(10)
-        while not self.check_if_current_at_target(current_target):
+        while not self.check_if_current_at_target(current_target) and not self.cancelled:
             # Publish our current joint pose
             pos, current = self.dc.read_pos_torque() 
             self.publish_pose(pos, current)
@@ -142,7 +159,10 @@ class MotorController(Node):
             rate.sleep()
         self.dc.set_speed(10)
         self.mutex = False
-        goal.succeed()
+        if not self.cancelled:
+            goal.succeed()
+        else:
+            goal.cancelled()
         result = Gripper.Result()
         # TODO: Update to return an actual usable result
         result.result = 2

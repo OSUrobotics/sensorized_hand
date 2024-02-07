@@ -27,5 +27,5 @@ rate.sleep is blocking in motor implementation - temporarily just using time sle
 Possibly timestamp/header all of my custom msg types?
 
 
-vcgencmd get_throttled
+<!-- vcgencmd get_throttled -->
 vcgencmd measure_temp
