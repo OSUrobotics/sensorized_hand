@@ -3,7 +3,7 @@
 ## About 
 This repository contains the control code for a custom, fully-actuated sensorized hand. It is designed to be implemented on a Raspberry Pi with ROS 2, which requires Ubuntu 22.04. 
 
-![Overview](.git/hand.jpg "The custom fully actuated hand.")
+![Overview](resources/hand.jpg "The custom fully actuated hand.")
 
 ## Installation
 Create a ROS 2 workspace. Within the source directory clone this repo:
