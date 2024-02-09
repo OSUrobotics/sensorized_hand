@@ -203,12 +203,12 @@ def main(args=None):
 	# Initialize the node
 	rclpy.init(args=args)
 	imu = MinIMU_9()
-	try:
-		imu.start_imu()
-		rclpy.spin(imu)
-	except SystemExit:
-		imu.destroy_node()
-		rclpy.shutdown()
+	# try:
+	imu.start_imu()
+	rclpy.spin(imu)
+	# except SystemExit:
+	# imu.destroy_node()
+	# rclpy.shutdown()
 		
 
 if __name__ == "__main__":

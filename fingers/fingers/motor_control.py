@@ -29,7 +29,8 @@ class MotorController(Node):
 
         self.setup_motors()
         self.go_to_start_position()
-
+        self.closed = False
+        self.cancelled = False
         # General idea
         """
         1) read motor position and torque and publish it
@@ -66,26 +67,55 @@ class MotorController(Node):
     def gipper_command(self, goal):
         command = goal.request.command
         if command == "close-parallel":
+            # Start a callback 
+            self.open_time = self.create_timer(15, self.cancel_callback)
+            self.closed = True
+            self.cancelled = False
+            
             result = self.close_parallel(goal)
             return result
         elif command == "open":
+            self.closed = False
             result = self.open_gripper(goal)
             return result
         else:
             self.get_logger().error('Gripper command "%s" not implemented.' % command)
-            result.result = 0
+            result = 0
             return result
         
         #  goal_handle.succeed()
+    def cancel_callback(self):
+        self.get_logger().error('Opening, no open request in a few seconds!')
+        self.cancelled = True
+        self.open_gripper(None)
+        self.open_time.destroy()
 
     def open_gripper(self, goal):
+    
+        self.mutex = True
+        if self.open_time:
+            self.open_time.destroy()
+            
+        sleep(.1)
+        print("opening gripper")
+        self.dc.reboot_dynamixel()
+        for id in self.dc.dxls.keys():
+            self.dc.packetHandler.reboot(self.dc.portHandler, id)
+        sleep(.25)
+        for id in self.dc.dxls.keys():
+            self.dc.enable_torque(id, True)
+        
         self.go_to_start_position()
+        self.mutex = False
+        
+        
 
         # TODO: Implement error checking and actual feedback here
-        goal.succeed()
-        result = Gripper.Result()
-        result.result = 2
-        return result
+        if goal:
+            goal.succeed()
+            result = Gripper.Result()
+            result.result = 2
+            return result
 
     def close_parallel(self, goal):
         # Goal is to close and maintain parallel interfaces between distal links
@@ -96,7 +126,7 @@ class MotorController(Node):
         # 
 
         rate = self.create_rate(10)
-        current_target = [800, 1000, 800, 1000]
+        current_target = [600, 800, 600, 800]
         # Set the goal current
 
         # Start by disabling current pose publisher
@@ -115,7 +145,7 @@ class MotorController(Node):
 
         # Update motor position until we reach a current thresehold
         rate = self.create_rate(10)
-        while not self.check_if_current_at_target(current_target):
+        while not self.check_if_current_at_target(current_target) and not self.cancelled:
             # Publish our current joint pose
             pos, current = self.dc.read_pos_torque() 
             self.publish_pose(pos, current)
@@ -127,9 +157,12 @@ class MotorController(Node):
 
             self.dc.go_to_position_all(new_pos_target)
             rate.sleep()
-
+        self.dc.set_speed(10)
         self.mutex = False
-        goal.succeed()
+        if not self.cancelled:
+            goal.succeed()
+        else:
+            goal.cancelled()
         result = Gripper.Result()
         # TODO: Update to return an actual usable result
         result.result = 2
@@ -185,6 +218,11 @@ class MotorController(Node):
         self.dc.add_dynamixel(type="XL-330", ID_number=3, calibration=[1023,2048,3073])
 
         self.dc.set_speed(40)
+        # Update abs max current
+        current_target = [900, 1100, 900, 1100]
+        for i in range(4):
+            self.dc.add_parameter(id = i, address = 38, byte_length = 2, value = current_target[i])
+        self.dc.send_parameters()
         self.dc.setup_all()
         self.dc.update_PID(1000,400,2000)
         # Give it a small break 
@@ -201,10 +239,16 @@ class MotorController(Node):
         
         start_position = [-.8, 0, .8, 0]
         self.dc.go_to_position_all(start_position)
-        sleep(2)
+        self.mutex = False
+        sleep(1.9)
+        self.mutex = True
+        sleep(.1)
         start_position = [-.8, .8, .8, -.8]
         self.dc.go_to_position_all(start_position)
-        sleep(2)
+        self.mutex = False
+        sleep(1.9)
+        self.mutex = True
+        sleep(.1)
         self.dc.set_speed(40)
         self.mutex = False
 
@@ -230,7 +274,20 @@ def main(args=None):
     rclpy.get_default_context().on_shutdown(motor_controller.shutdown_motors)
     executor = MultiThreadedExecutor()
 
-    rclpy.spin(motor_controller, executor=executor)
+
+    try:
+        rclpy.spin(motor_controller, executor=executor)
+    except (KeyboardInterrupt, rclpy.executors.ExternalShutdownException):
+        motor_controller.mutex = True
+        sleep(.1)
+        motor_controller.dc.reboot_dynamixel()
+        motor_controller.dc.end_program()
+        motor_controller.get_logger().info("Dynamixel torque disabled, port closed.")
+        pass
+    finally:
+        # motor_controller.destroy_node()
+        rclpy.try_shutdown()
+    
     # Spin in a separate thread
     # thread = threading.Thread(target=rclpy.spin, args=(motor_controller, ), daemon=True)
     # thread.start()
