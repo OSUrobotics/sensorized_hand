@@ -1,3 +1,18 @@
+# Sensorized Hand
+
+## About 
+This repository contains the control code for a custom, fully-actuated sensorized hand. It is designed to be implemented on a Raspberry Pi with ROS 2, which requires Ubuntu 22.04. 
+
+## Installation
+Create a ROS 2 workspace. Within the source directory clone this repo:
+```console
+git clone --recurse-submodules git@github.com:OSUrobotics/sensorized_hand.git
+```
+Install the required dependencies:
+```console
+python3 -m pip install dynamixel-control
+```
+
 colcon build --event-handlers console_direct+ --cmake-args -DCMAKE_VERBOSE_MAKEFILE=ON
 
 source /opt/ros/humble/setup.bash
