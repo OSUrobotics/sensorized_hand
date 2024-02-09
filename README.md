@@ -14,12 +14,40 @@ Install the required dependencies:
 ```console
 python3 -m pip install dynamixel-control
 ```
+Build the workspace by running colcon build from the /src folder:
+```console
+colcon build --symlink-install
+. install/setup.bash
+```
+Don't forget to add sourcing both the workspace and ROS install to the .bashrc!
+
+## Usage
+To launch everything, run:
+```console
+ros2 launch fingers all_launch.py
+```
+To launch only the IMUs, TOFs, or motors:
+```console
+ros2 launch imu bringup_imus_launch.py 
+```
+```console
+ros2 launch tof tof_bringup_launch.py 
+```
+```console
+ros2 run fingers motor_control.py 
+```
+
+## Other notes
+You may need to downgrade setup tools:
+```console
+pip install setuptools==58.2.0
+```
 
 colcon build --event-handlers console_direct+ --cmake-args -DCMAKE_VERBOSE_MAKEFILE=ON
 
 source /opt/ros/humble/setup.bash
 . install/setup.bash
-pip install setuptools==58.2.0
+
 
 ros2 run tof talker 
 
