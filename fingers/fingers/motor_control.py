@@ -13,6 +13,7 @@ from hand_msgs.action import Gripper
 from rclpy.action import ActionServer
 import threading
 from time import sleep
+import datetime
 
 
 
@@ -126,7 +127,7 @@ class MotorController(Node):
         # 
 
         rate = self.create_rate(10)
-        current_target = [600, 800, 600, 800]
+        current_target = [800, 1000, 800, 1000] # Was 600, 800
         # Set the goal current
 
         # Start by disabling current pose publisher
@@ -142,41 +143,53 @@ class MotorController(Node):
         for i in range(4):
             self.dc.add_parameter(id = i, address = 112, byte_length = 4, value = 25)
         self.dc.send_parameters()
-
+        time_start = datetime.datetime.now()
         # Update motor position until we reach a current thresehold
         rate = self.create_rate(10)
-        while not self.check_if_current_at_target(current_target) and not self.cancelled:
+        main = True
+        while not self.check_if_current_at_target(current_target, main) and not self.cancelled:
             # Publish our current joint pose
             pos, current = self.dc.read_pos_torque() 
             self.publish_pose(pos, current)
 
             left = self.dc.dxls[0].read_position_rad #+ .05
-            right = -left #self.dc.dxls[2].read_position_rad #- .05 
+            right = self.dc.dxls[2].read_position_rad # -left #
             # new_pos_target = [left+.02, -left, right-.02, -right]
             new_pos_target = [left+2.0, -(left-.02), (right-2.0), -(right+.02)]
 
             self.dc.go_to_position_all(new_pos_target)
             rate.sleep()
+            
+            # Check if we have been closing for a while
+            time_diff = datetime.datetime.now() - time_start
+            if time_diff.total_seconds() > 3.0:
+                main = False
+                
         self.dc.set_speed(10)
         self.mutex = False
         if not self.cancelled:
             goal.succeed()
         else:
-            goal.cancelled()
+            goal.abort()
         result = Gripper.Result()
         # TODO: Update to return an actual usable result
         result.result = 2
         return result
 
 
-    def check_if_current_at_target(self, target_current):
+    def check_if_current_at_target(self, target_current, main = True):
         # Return true if both proximal motors are at their target current
+        if main:
+            diff = -25
+        else:
+            diff = -200
+        
         for i in [0,2]:
             dxl_cur = self.dc.dxls[i].current_torque
             if dxl_cur > 32768:
                 dxl_cur = 65536-dxl_cur
             print(f"Current: {dxl_cur}, target: {target_current[i]}")
-            if dxl_cur - target_current[i] < -10:
+            if dxl_cur - target_current[i] < diff or dxl_cur > target_current[i] * 1.2:
                 return False
         return True
 

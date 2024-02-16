@@ -17,7 +17,7 @@ class MotorTestClient(Node):
 
     def send_goal(self):
         goal_msg = Gripper.Goal()
-        goal_msg.command = "open"
+        goal_msg.command = "close-parallel"
 
         self._send_goal_future = self._action_client.send_goal_async(goal_msg)
         self._send_goal_future.add_done_callback(self.goal_response_callback)
