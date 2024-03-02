@@ -96,8 +96,8 @@ class MotorController(Node):
         self.mutex = True
         if self.open_time:
             self.open_time.destroy()
-            
-        sleep(.1)
+        rate = self.create_rate(10)    
+        rate.sleep()
         print("opening gripper")
         self.dc.reboot_dynamixel()
         for id in self.dc.dxls.keys():

@@ -40,7 +40,11 @@ ros2 run fingers motor_control.py
 ## Other notes
 You may need to downgrade setup tools:
 ```console
-pip install setuptools==58.2.0
+python3 -m pip install setuptools==58.2.0
+```
+Install readerwriterlock:
+```console
+python3 -m pip install readerwriterlock
 ```
 To see devices on an I2C bus (number is the bus):
 ```console
